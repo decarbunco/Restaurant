@@ -190,42 +190,88 @@
     </div>
 
     <script>
-        // URL de tu túnel de Ngrok activo
         const API_BASE_URL = "https://radiator-conceal-finally.ngrok-free.dev";
-        
-        // Obtener el número de mesa desde la URL (ejemplo: index.html?mesa=2)
         const urlParams = new URLSearchParams(window.location.search);
         const NUM_MESA = parseInt(urlParams.get('mesa')) || 1;
 
         let menuPlatos = [];
-        let carrito = {}; // Estructura: { "Nombre del plato": { precio: 10.0, cantidad: 2 } }
+        let carrito = {};
 
         document.getElementById('lblMesa').innerText = `Mesa ${NUM_MESA}`;
 
-        // 1. CARGAR MENÚ DESDE LA API
         async function cargarMenu() {
             try {
                 const res = await fetch(`${API_BASE_URL}/api/menu`);
-                if (!res.ok) throw new Error("Error en la respuesta del servidor");
+                if (!res.ok) throw new Error("Error en la respuesta");
                 menuPlatos = await res.json();
                 renderizarMenu();
             } catch (err) {
-                console.error("Error al cargar el menú:", err);
-                document.getElementById('contenedorMenu').innerHTML = "<p style='color: #e50914;'>Error al conectar con la caja. Asegúrate de que Ngrok y el servidor estén activos.</p>";
+                console.error("Error al cargar menú:", err);
+                document.getElementById('contenedorMenu').innerHTML = "<p style='color:#e50914;'>Error al conectar con la caja. Verifica Ngrok.</p>";
             }
         }
 
-        // 2. MOSTRAR EL MENÚ CON BOTONES (+ / -)
         function renderizarMenu() {
             const contenedor = document.getElementById('contenedorMenu');
             contenedor.innerHTML = "";
 
-            if (menuPlatos.length === 0) {
-                contenedor.innerHTML = "<p>No hay platos disponibles en este momento.</p>";
+            if (!menuPlatos || menuPlatos.length === 0) {
+                contenedor.innerHTML = "<p>No hay platos disponibles.</p>";
                 return;
             }
 
             menuPlatos.forEach(plato => {
-                const itemEnCarrito = carrito[plato¿Podrías aclararme **a qué código te refieres** o **cuál es el script o programa** que necesitas que te repita? 
+                const cant = carrito[plato.nombre] ? carrito[plato.nombre].cantidad : 0;
+                const card = document.createElement('div');
+                card.className = 'plato-card';
+                card.innerHTML = `
+                    <div class="plato-info">
+                        <h3>${plato.nombre}</h3>
+                        <p>${plato.descripcion || ''La interfaz web se queda colgada en **"Cargando menú..."** sin mostrar los platillos[cite: 1]. Esto indica que la función `fetch` o la petición asíncrona hacia la base de datos/API no está completándose o devuelve un error.
 
-Si venías trabajando en alguna tarea anterior o hay un fragmento en particular que necesitas, por favor pégalo o dame un poco de contexto para generarlo de nuevo.
+Causas comunes y cómo corregirlo en tu código:
+
+### 1. Error de CORS o ruta de archivo incorrecta
+Si estás consumiendo un archivo JSON local (ej. `menu.json`) en GitHub Pages (`decarbunco.github.io`)[cite: 1]:
+* Asegúrate de usar una ruta relativa correcta (ej. `./menu.json` o `menu.json`).
+* Revisa en la consola del navegador si hay un error `404 Not Found` o un bloqueo de política CORS.
+
+### 2. Formato del JSON inválido
+Si el archivo desde donde lees el menú tiene una coma de más o comillas mal cerradas, la llamada fallará:
+* Pasa el contenido de tu API o archivo por un validador como [JSONLint](https://jsonlint.com/).
+
+### 3. Falta de manejo de errores en el JavaScript
+Si el código no tiene un bloque `.catch()` o `try...catch`, el texto "Cargando menú..." nunca se reemplaza si ocurre un fallo.
+
+Estructura básica para resolverlo e identificar el problema:
+
+```javascript
+async function cargarMenu() {
+  const contenedor = document.getElementById('contenedor-menu'); // Ajusta con tu ID
+  
+  try {
+    const respuesta = await fetch('menu.json'); // Cambia por tu URL/endpoint
+    if (!respuesta.ok) {
+      throw new Error(`Error en la petición: ${respuesta.status}`);
+    }
+    const platos = await respuesta.json();
+    
+    // Si no hay platillos
+    if (platos.length === 0) {
+      contenedor.innerHTML = '<p>No hay platillos disponibles por el momento.</p>';
+      return;
+    }
+
+    // Renderizar menú
+    contenedor.innerHTML = ''; 
+    platos.forEach(plato => {
+      // Tu lógica para insertar el HTML de cada plato
+    });
+
+  } catch (error) {
+    console.error('Error al cargar el menú:', error);
+    contenedor.innerHTML = '<p style="color: red;">Error al cargar el menú. Por favor, reintenta más tarde.</p>';
+  }
+}
+
+cargarMenu();
