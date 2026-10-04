@@ -201,18 +201,28 @@
 
         async function cargarMenu() {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/menu`, {
+                // Intenta primero con /api/menu y luego con /menu si falla o viene vacío
+                let res = await fetch(`${API_BASE_URL}/api/menu`, {
                     headers: { 'ngrok-skip-browser-warning': 'true' }
                 });
-                if (!res.ok) throw new Error("Error en la respuesta de la red");
-                
+
+                if (!res.ok) {
+                    res = await fetch(`${API_BASE_URL}/menu`, {
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    });
+                }
+
+                if (!res.ok) throw new Error("No se pudo obtener el menú desde la API");
+
                 const data = await res.json();
                 
-                // Normalizar respuesta por si viene como { platos: [...] } o [...]
+                // Extrae el arreglo sin importar la propiedad donde venga empaquetado
                 if (Array.isArray(data)) {
                     menuPlatos = data;
                 } else if (data && Array.isArray(data.platos)) {
                     menuPlatos = data.platos;
+                } else if (data && Array.isArray(data.menu)) {
+                    menuPlatos = data.menu;
                 } else if (data && Array.isArray(data.data)) {
                     menuPlatos = data.data;
                 } else {
@@ -223,7 +233,7 @@
             } catch (err) {
                 console.error("Error al cargar menú:", err);
                 document.getElementById('contenedorMenu').innerHTML = 
-                    "<p style='color:#e50914; font-weight: bold;'>⚠️ Error al conectar con el servidor. Verifica que Ngrok y la API estén activos.</p>";
+                    "<p style='color:#e50914; font-weight: bold;'>⚠️ Error al conectar con el servidor. Verifica que Ngrok y el backend estén activos.</p>";
             }
         }
 
@@ -232,7 +242,7 @@
             contenedor.innerHTML = "";
 
             if (!menuPlatos || menuPlatos.length === 0) {
-                contenedor.innerHTML = "<p>No hay platos disponibles en este momento. Revisa si agregaste productos a la base de datos.</p>";
+                contenedor.innerHTML = "<p style='color:#ff9800;'>La API respondió correctamente, pero no devolvió platos. Agrega platos en tu base de datos o backend.</p>";
                 return;
             }
 
@@ -244,9 +254,9 @@
                 card.className = 'plato-card';
                 card.innerHTML = `
                     <div class="plato-info">
-                        <h3>${plato.nombre}</h3>
-                        <p>${plato.descripcion || ''}</p>
-                        <div class="plato-precio">$${Number(plato.precio || 0).toFixed(2)}</div>
+                        <h3>${plato.nombre || plato.title}</h3>
+                        <p>${plato.descripcion || plato.description || ''}</p>
+                        <div class="plato-precio">$${Number(plato.precio || plato.price || 0).toFixed(2)}</div>
                     </div>
                     <div class="controls">
                         <button class="btn-qty" onclick="modificarCantidad('${idPlato}', -1)" ${cant === 0 ? 'disabled' : ''}>-</button>
@@ -283,7 +293,8 @@
 
             for (const key in carrito) {
                 const item = carrito[key];
-                total += item.plato.precio * item.cantidad;
+                const precio = item.plato.precio || item.plato.price || 0;
+                total += precio * item.cantidad;
                 cantidadTotal += item.cantidad;
             }
 
@@ -296,8 +307,8 @@
             for (const key in carrito) {
                 const item = carrito[key];
                 items.push({
-                    nombre: item.plato.nombre,
-                    precio: item.plato.precio,
+                    nombre: item.plato.nombre || item.plato.title,
+                    precio: item.plato.precio || item.plato.price || 0,
                     cantidad: item.cantidad
                 });
             }
@@ -309,17 +320,25 @@
             btnEnviar.innerText = "Enviando...";
 
             try {
-                const res = await fetch(`${API_BASE_URL}/api/pedidos`, {
+                let res = await fetch(`${API_BASE_URL}/api/pedidos`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'ngrok-skip-browser-warning': 'true'
                     },
-                    body: JSON.stringify({
-                        mesa: NUM_MESA,
-                        items: items
-                    })
+                    body: JSON.stringify({ mesa: NUM_MESA, items: items })
                 });
+
+                if (!res.ok) {
+                    res = await fetch(`${API_BASE_URL}/pedido`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'ngrok-skip-browser-warning': 'true'
+                        },
+                        body: JSON.stringify({ mesa: NUM_MESA, items: items })
+                    });
+                }
 
                 if (res.ok) {
                     alert("¡Pedido enviado a la cocina con éxito!");
@@ -352,24 +371,32 @@
             lista.innerHTML = "<li>Cargando acumulado...</li>";
 
             try {
-                const res = await fetch(`${API_BASE_URL}/api/acumulado/${NUM_MESA}`, {
+                let res = await fetch(`${API_BASE_URL}/api/acumulado/${NUM_MESA}`, {
                     headers: { 'ngrok-skip-browser-warning': 'true' }
                 });
+
+                if (!res.ok) {
+                    res = await fetch(`${API_BASE_URL}/acumulado/${NUM_MESA}`, {
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    });
+                }
 
                 if (!res.ok) throw new Error("Error al obtener el acumulado");
 
                 const datos = await res.json();
                 lista.innerHTML = "";
 
-                if (!datos.items || datos.items.length === 0) {
+                const itemsAcumulados = datos.items || datos.pedidos || [];
+
+                if (!itemsAcumulados || itemsAcumulados.length === 0) {
                     lista.innerHTML = "<li>No hay consumo registrado aún.</li>";
                     lblTotal.innerText = "$0.00";
                     return;
                 }
 
-                datos.items.forEach(item => {
+                itemsAcumulados.forEach(item => {
                     const li = document.createElement('li');
-                    li.innerText = `${item.cantidad}x ${item.nombre} - $${(item.precio * item.cantidad).toFixed(2)}`;
+                    li.innerText = `${item.cantidad}x ${item.nombre} - $${((item.precio || 0) * item.cantidad).toFixed(2)}`;
                     lista.appendChild(li);
                 });
 
