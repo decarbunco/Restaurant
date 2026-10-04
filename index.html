@@ -3,248 +3,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menú Digital - Restaurante</title>
+    <title>Menú Restaurante Central</title>
     <style>
         :root {
-            --primary: #d32f2f;
-            --bg: #121212;
+            --bg-color: #121212;
             --card-bg: #1e1e1e;
-            --text: #ffffff;
-            --text-muted: #aaaaaa;
+            --accent-color: #e50914;
+            --text-color: #ffffff;
+            --text-secondary: #aaaaaa;
+            --green-color: #2e7d32;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
-            padding: 0;
-            padding-bottom: 90px;
+            padding: 15px;
+            padding-bottom: 100px;
         }
 
         header {
-            background-color: var(--card-bg);
-            padding: 15px;
             text-align: center;
-            border-bottom: 2px solid var(--primary);
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            padding: 10px 0;
+            border-bottom: 2px solid var(--accent-color);
+            margin-bottom: 15px;
         }
 
         header h1 {
             margin: 0;
-            font-size: 1.4rem;
+            font-size: 24px;
         }
 
         .mesa-badge {
-            background-color: var(--primary);
+            display: inline-block;
+            background-color: var(--accent-color);
             color: white;
             padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.9rem;
-            display: inline-block;
-            margin-top: 5px;
+            border-radius: 15px;
             font-weight: bold;
+            margin-top: 5px;
         }
 
-        .container {
+        .btn-ver-cuenta {
+            background-color: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 10px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+
+        .cuenta-modal {
+            display: none;
+            background-color: #252525;
+            border: 1px solid #444;
+            border-radius: 8px;
             padding: 15px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .categoria-titulo {
-            font-size: 1.2rem;
-            color: #ff5252;
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
-            margin-top: 20px;
+            margin-bottom: 200px;
         }
 
         .plato-card {
             background-color: var(--card-bg);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 12px;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .plato-info {
-            flex: 1;
-            padding-right: 10px;
+        .plato-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
         }
 
-        .plato-nombre {
-            font-weight: bold;
-            font-size: 1rem;
-        }
-
-        .plato-desc {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin: 4px 0;
+        .plato-info p {
+            margin: 0;
+            font-size: 12px;
+            color: var(--text-secondary);
         }
 
         .plato-precio {
             font-weight: bold;
             color: #4caf50;
+            margin-top: 5px;
         }
 
-        .btn-agregar {
-            background-color: var(--primary);
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-qty {
+            background-color: var(--accent-color);
             color: white;
             border: none;
-            padding: 8px 14px;
-            border-radius: 5px;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 18px;
             font-weight: bold;
             cursor: pointer;
         }
 
-        .cart-bar {
+        .btn-qty:disabled {
+            background-color: #555;
+        }
+
+        .qty-num {
+            font-size: 16px;
+            font-weight: bold;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .footer-cart {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            background-color: var(--card-bg);
+            background-color: #1a1a1a;
             border-top: 1px solid #333;
             padding: 15px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            max-width: 600px;
-            margin: 0 auto;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+        }
+
+        .cart-total {
+            font-size: 18px;
+            font-weight: bold;
         }
 
         .btn-enviar {
-            background-color: #4caf50;
+            background-color: var(--green-color);
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            font-size: 1rem;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
             font-weight: bold;
             cursor: pointer;
         }
 
-        .status-msg {
-            text-align: center;
-            color: #ffaa00;
-            margin-top: 10px;
+        .btn-enviar:disabled {
+            background-color: #555;
         }
     </style>
 </head>
 <body>
 
     <header>
-        <h1 id="restaurante-nombre">Restaurante Central</h1>
-        <div class="mesa-badge" id="mesa-tag">Mesa --</div>
+        <h1>Restaurante Central</h1>
+        <div class="mesa-badge" id="lblMesa">Mesa 1</div>
     </header>
 
-    <div class="container" id="menu-container">
-        <!-- Los platos se cargan dinámicamente -->
+    <button class="btn-ver-cuenta" onclick="toggleCuenta()">📋 Ver Acumulado de la Mesa</button>
+
+    <div class="cuenta-modal" id="modalCuenta">
+        <h3 style="margin-top: 0;">Lo que lleva la Mesa:</h3>
+        <ul id="listaAcumulada" style="padding-left: 20px; color: #ccc;">
+            <li>Cargando...</li>
+        </ul>
+        <hr style="border-color: #444;">
+        <p style="text-align: right; font-weight: bold;">Total Acumulado: <span id="totalMesaAcumulado" style="color:#4caf50;">$0.00</span></p>
     </div>
 
-    <div class="cart-bar">
-        <div>
-            <span>Total: </span>
-            <strong id="total-pedido" style="color: #4caf50; font-size: 1.2rem;">$0.00</strong>
-        </div>
-        <button class="btn-enviar" onclick="enviarPedido()">Enviar Pedido</button>
+    <h2>Menú de Platos</h2>
+    <div id="contenedorMenu">
+        <p>Cargando menú...</p>
+    </div>
+
+    <div class="footer-cart">
+        <div class="cart-total">Total Carrito: <span id="lblTotalCart" style="color:#4caf50;">$0.00</span></div>
+        <button class="btn-enviar" id="btnEnviar" onclick="enviarPedido()" disabled>Enviar Pedido</button>
     </div>
 
     <script>
-        // Cambia localhost por la IP pública o Ngrok de la PC del restaurante para pruebas externas
-        const API_URL = "https://radiator-conceal-finally.ngrok-free.dev/api/pedido"; 
-
-        let carrito = [];
-        let numMesa = 1;
-
-        // Detectar mesa de la URL (?mesa=1)
+        // Dirección pública activa de Ngrok
+        const API_URL = "https://radiator-conceal-finally.ngrok-free.dev";
+        
+        // Determinar número de mesa por parámetro URL (?mesa=1) o por defecto 1
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('mesa')) {
-            numMesa = parseInt(urlParams.get('mesa'));
-        }
-        document.getElementById('mesa-tag').innerText = `Mesa ${numMesa}`;
+        const NUM_MESA = parseInt(urlParams.get('mesa')) || 1;Entendido, tomamos la **Opción 2** y le añadimos el contador numérico para la cantidad de pedidos de cada plato. 
 
-        // Cargar menú desde platos.json
-        fetch('platos.json')
-            .then(res => res.json())
-            .then(platos => renderMenu(platos))
-            .catch(err => console.error("Error al cargar menú:", err));
+Para dejar todo claro y listo para tu desarrollo o diseño, la estructura visual y de datos queda así:
 
-        function renderMenu(platos) {
-            const container = document.getElementById('menu-container');
-            container.innerHTML = '';
+---
 
-            const categorias = [...new Set(platos.map(p => p.categoria))];
+### Muestra de interfaz / Formato de la tarjeta
 
-            categorias.forEach(cat => {
-                const titulo = document.createElement('h2');
-                titulo.className = 'categoria-titulo';
-                titulo.innerText = cat;
-                container.appendChild(titulo);
-
-                platos.filter(p => p.categoria === cat).forEach(plato => {
-                    const card = document.createElement('div');
-                    card.className = 'plato-card';
-                    card.innerHTML = `
-                        <div class="plato-info">
-                            <div class="plato-nombre">${plato.nombre}</div>
-                            <div class="plato-desc">${plato.descripcion}</div>
-                            <div class="plato-precio">$${plato.precio.toFixed(2)}</div>
-                        </div>
-                        <button class="btn-agregar" onclick='agregarAlCarrito(${JSON.stringify(plato)})'>+ Agregar</button>
-                    `;
-                    container.appendChild(card);
-                });
-            });
-        }
-
-        function agregarAlCarrito(plato) {
-            const item = carrito.find(i => i.id === plato.id);
-            if (item) {
-                item.cantidad += 1;
-            } else {
-                carrito.push({ ...plato, cantidad: 1 });
-            }
-            actualizarTotal();
-        }
-
-        function actualizarTotal() {
-            const total = carrito.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
-            document.getElementById('total-pedido').innerText = `$${total.toFixed(2)}`;
-        }
-
-        function enviarPedido() {
-            if (carrito.length === 0) {
-                alert("Selecciona al menos un plato antes de enviar.");
-                return;
-            }
-
-            const payload = {
-                mesa: numMesa,
-                items: carrito
-            };
-
-            fetch(API_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert("¡Pedido enviado a la cocina con éxito!");
-                carrito = [];
-                actualizarTotal();
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Error al enviar el pedido. Asegúrate de que la caja esté conectada.");
-            });
-        }
-    </script>
-</body>
-</html>
+```text
++-------------------------------------------------------------+
+|  [ Imagen del Plato ]                                       |
+|                                                             |
+|  Ceviche Mixto                                      $12.50  |
+|  Camarón, pescado, cebolla morada y limón.                  |
+|                                                             |
+|  [ - ]  [  2  ]  [ + ]                           [ Pedir ]  |
++-------------------------------------------------------------+
