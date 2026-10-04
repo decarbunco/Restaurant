@@ -20,7 +20,7 @@
             color: var(--text-color);
             margin: 0;
             padding: 15px;
-            padding-bottom: 110px;
+            padding-bottom: 120px;
         }
 
         header {
@@ -64,7 +64,7 @@
             border: 1px solid #444;
             border-radius: 8px;
             padding: 15px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .plato-card {
@@ -190,72 +190,42 @@
     </div>
 
     <script>
-        // Dirección pública activa de Ngrok
-        const API_URL = "https://radiator-conceal-finally.ngrok-free.dev";
+        // URL de tu túnel de Ngrok activo
+        const API_BASE_URL = "https://radiator-conceal-finally.ngrok-free.dev";
         
-        // Determinar número de mesa por parámetro URL (?mesa=1) o por defecto 1
+        // Obtener el número de mesa desde la URL (ejemplo: index.html?mesa=2)
         const urlParams = new URLSearchParams(window.location.search);
         const NUM_MESA = parseInt(urlParams.get('mesa')) || 1;
 
-        let platos = [];
-        let carrito = {}; // Estructura: { idPlato: cantidad }
+        let menuPlatos = [];
+        let carrito = {}; // Estructura: { "Nombre del plato": { precio: 10.0, cantidad: 2 } }
 
         document.getElementById('lblMesa').innerText = `Mesa ${NUM_MESA}`;
 
-        // Cargar el menú desde el Backend
+        // 1. CARGAR MENÚ DESDE LA API
         async function cargarMenu() {
             try {
-                const res = await fetch(`${API_URL}/menu`);
-                platos = await res.json();
+                const res = await fetch(`${API_BASE_URL}/api/menu`);
+                if (!res.ok) throw new Error("Error en la respuesta del servidor");
+                menuPlatos = await res.json();
                 renderizarMenu();
             } catch (err) {
-                console.error("Error cargando menú:", err);
-                document.getElementById('contenedorMenu').innerHTML = "<p>Error al cargar el menú. Revisa la conexión.</p>";
+                console.error("Error al cargar el menú:", err);
+                document.getElementById('contenedorMenu').innerHTML = "<p style='color: #e50914;'>Error al conectar con la caja. Asegúrate de que Ngrok y el servidor estén activos.</p>";
             }
         }
 
-        // Renderizar la lista de platos con botones de cantidad
+        // 2. MOSTRAR EL MENÚ CON BOTONES (+ / -)
         function renderizarMenu() {
             const contenedor = document.getElementById('contenedorMenu');
             contenedor.innerHTML = "";
 
-            platos.forEach(plato => {
-                const cant = carrito[plato.id] || 0;
-                const card = document.createElement('div');
-                card.className = 'plato-card';
-                card.innerHTML = `
-                    <div class="plato-info">
-                        <h3>${plato.nombre}</h3>
-                        <p>${plato.descripcion || ''}</p>
-                        <div class="plato-precio">$${plato.precio.toFixed(2)}</div>
-                    </div>
-                    <div class="controls">
-                        <button class="btn-qty" onclick="modificarCantidad(${plato.id}, -1)" ${cant === 0 ? 'disabled' : ''}>-</button>
-                        <span class="qty-num">${cant}</span>
-                        <button class="btn-qty" onclick="modificarCantidad(${plato.id}, 1)">+</button>
-                    </div>
-                `;
-                contenedor.appendChild(card);
-            });
-
-            actualizarFooterCarrito();
-        }
-
-        // Incrementar o decrementar la cantidad local
-        function modificarCantidad(idPlato, cambio) {
-            const actual = carrito[idPlato] || 0;
-            const nuevaCant = actual + cambio;
-
-            if (nuevaCant <= 0) {
-                delete carrito[idPlato];
-            } else {
-                carrito[idPlato] = nuevaCant;
+            if (menuPlatos.length === 0) {
+                contenedor.innerHTML = "<p>No hay platos disponibles en este momento.</p>";
+                return;
             }
 
-            renderizarMenu();
-        }
+            menuPlatos.forEach(plato => {
+                const itemEnCarrito = carrito[plato¿Podrías aclararme **a qué código te refieres** o **cuál es el script o programa** que necesitas que te repita? 
 
-        // Calcular y actualizar el total del carrito actual
-        function actualizarFooterCarritoPor supuesto. Sin embargo, no tengo acceso al historial o a los mensajes previos de nuestra conversación para ver el código ni los ajustes específicos que realizamos. 
-
-Por favor, **comparte o pega aquí el código original junto con un breve resumen de los cambios o ajustes que querías implementar**, y con gusto te reescribiré la versión final completa, limpia y totalmente integrada.
+Si venías trabajando en alguna tarea anterior o hay un fragmento en particular que necesitas, por favor pégalo o dame un poco de contexto para generarlo de nuevo.
