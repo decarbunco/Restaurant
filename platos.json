@@ -1,0 +1,18 @@
+[
+  {
+    "id": "P01",
+    "nombre": "Hamburguesa Especial",
+    "categoria": "Platos Fuertes",
+    "precio": 8.50,
+    "descripcion": "Carne de res 180g, queso cheddar, tocino y papas.",
+    "disponible": true
+  },
+  {
+    "id": "P02",
+    "nombre": "Espagueti",
+    "categoria": "Platos Fuertes",
+    "precio": 6.00,
+    "descripcion": "200 gramos de pasta y carne de res",
+    "disponible": true
+  }
+]
