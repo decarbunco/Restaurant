@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menú Digital</title>
+    <style>
+        :root {
+            --primary: #d32f2f;
+            --bg: #121212;
+            --card-bg: #1e1e1e;
+            --text: #ffffff;
+            --text-muted: #aaaaaa;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 80px;
+        }
+
+        header {
+            background-color: var(--card-bg);
+            padding: 15px;
+            text-align: center;
+            border-bottom: 2px solid var(--primary);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+
+        .mesa-badge {
+            background-color: var(--primary);
+            color: white;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .container {
+            padding: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .categoria-titulo {
+            font-size: 1.2rem;
+            color: var(--primary);
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+            margin-top: 20px;
+        }
+
+        .plato-card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .plato-info {
+            flex: 1;
+            padding-right: 10px;
+        }
+
+        .plato-nombre {
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        .plato-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin: 4px 0;
+        }
+
+        .plato-precio {
+            font-weight: bold;
+            color: #4caf50;
+        }
+
+        .btn-agregar {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Barra flotante del pedido */
+        .cart-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--card-bg);
+            border-top: 1px solid #333;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .btn-enviar {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 id="restaurante-nombre">Restaurante Central</h1>
+        <div class="mesa-badge" id="mesa-tag">Mesa --</div>
+    </header>
+
+    <div class="container" id="menu-container">
+        <!-- Los platos se cargan dinámicamente -->
+    </div>
+
+    <div class="cart-bar">
+        <div>
+            <span>Total: </span>
+            <strong id="total-pedido" style="color: #4caf50; font-size: 1.2rem;">$0.00</strong>
+        </div>
+        <button class="btn-enviar" onclick="enviarPedido()">Enviar Pedido</button>
+    </div>
+
+    <script>
+        // Dirección IP de la PC del restaurante o servidor local
+        const API_URL = "http://localhost:5000/api/pedido"; 
+
+        let carrito = [];
+        let numMesa = 1;
+
+        // Obtener la mesa desde los parámetros de la URL (?mesa=1)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('mesa')) {
+            numMesa = parseInt(urlParams.get('mesa'));
+        }
+        document.getElementById('mesa-tag').innerText = `Mesa ${numMesa}`;
+
+        // Cargar platos desde platos.json
+        fetch('platos.json')
+            .then(res => res.json())
+            .then(platos => renderMenu(platos))
+            .catch(err => console.error("Error al cargar el menú:", err));
+
+        function renderMenu(platos) {
+            const container = document.getElementById('menu-container');
+            container.innerHTML = '';
+
+            const categorias = [...new Set(platos.map(p => p.categoria))];
+
+            categorias.forEach(cat => {
+                const titulo = document.createElement('h2');
+                titulo.className = 'categoria-titulo';
+                titulo.innerText = cat;
+                container.appendChild(titulo);
+
+                platos.filter(p => p.categoria === cat).forEach(plato => {
+                    const card = document.createElement('div');
+                    card.className = 'plato-card';
+                    card.innerHTML = `
+                        <div class="plato-info">
+                            <div class="plato-nombre">${plato.nombre}</div>
+                            <div class="plato-desc">${plato.descripcion}</div>
+                            <div class="plato-precio">$${plato.precio.toFixed(2)}</div>
+                        </div>
+                        <button class="btn-agregar" onclick='agregarAlCarrito(${JSON.stringify(plato)})'>+ Agregar</button>
+                    `;
+                    container.appendChild(card);
+                });
+            });
+        }
+
+        function agregarAlCarrito(plato) {
+            const item = carrito.find(i => i.id === plato.id);
+            if (item) {
+                item.cantidad += 1;
+            } else {
+                carrito.push({ ...plato, cantidad: 1Para crear la estructura básica de una página web en tu archivo `index.html`, debes incluir la plantilla estándar de HTML5. 
+
+Copia y pega este código dentro de tu archivo `index.html`:
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Sitio Web</title>
+</head>
+<body>
+
+    <header>
+        <h1>¡Bienvenido a mi sitio web!</h1>
+    </header>
+
+    <main>
+        <p>Este es mi primer sitio hospedado en GitHub.</p>
+    </main>
+
+    <footer>
+        <p>© 2026 - Creado con GitHub Pages</p>
+    </footer>
+
+</body>
+</html>
