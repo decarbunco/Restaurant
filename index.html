@@ -188,7 +188,6 @@
         <div class="cart-total">Total Carrito: <span id="lblTotalCart" style="color:#4caf50;">$0.00</span></div>
         <button class="btn-enviar" id="btnEnviar" onclick="enviarPedido()" disabled>Enviar Pedido</button>
     </div>
-
     <script>
         const API_BASE_URL = "https://radiator-conceal-finally.ngrok-free.dev";
         const urlParams = new URLSearchParams(window.location.search);
@@ -201,13 +200,15 @@
 
         async function cargarMenu() {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/menu`);
-                if (!res.ok) throw new Error("Error en la respuesta");
+                const res = await fetch(`${API_BASE_URL}/menu`, {
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+                if (!res.ok) throw new Error("Error en la respuesta de la API");
                 menuPlatos = await res.json();
                 renderizarMenu();
             } catch (err) {
-                console.error("Error al cargar menú:", err);
-                document.getElementById('contenedorMenu').innerHTML = "<p style='color:#e50914;'>Error al conectar con la caja. Verifica Ngrok.</p>";
+                console.error("Error al cargar el menú:", err);
+                document.getElementById('contenedorMenu').innerHTML = "<p style='color:#e50914;'>Error al conectar con la caja. Asegúrate de tener Ngrok y el servidor activos.</p>";
             }
         }
 
@@ -216,62 +217,133 @@
             contenedor.innerHTML = "";
 
             if (!menuPlatos || menuPlatos.length === 0) {
-                contenedor.innerHTML = "<p>No hay platos disponibles.</p>";
+                contenedor.innerHTML = "<p>No hay platos disponibles en este momento.</p>";
                 return;
             }
 
             menuPlatos.forEach(plato => {
-                const cant = carrito[plato.nombre] ? carrito[plato.nombre].cantidad : 0;
+                const cant = carrito[plato.id] || 0;
                 const card = document.createElement('div');
                 card.className = 'plato-card';
                 card.innerHTML = `
                     <div class="plato-info">
                         <h3>${plato.nombre}</h3>
-                        <p>${plato.descripcion || ''La interfaz web se queda colgada en **"Cargando menú..."** sin mostrar los platillos[cite: 1]. Esto indica que la función `fetch` o la petición asíncrona hacia la base de datos/API no está completándose o devuelve un error.
+                        <p>${plato.descripcion || ''}</p>
+                        <div class="plato-precio">$${plato.precio.toFixed(2)}</div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn-qty" onclick="modificarCantidad(${plato.id}, -1)" ${cant === 0 ? 'disabled' : ''}>-</button>
+                        <span class="qty-num">${cant}</span>
+                        <button class="btn-qty" onclick="modificarCantidad(${plato.id}, 1)">+</button>
+                    </div>
+                `;
+                contenedor.appendChild(card);
+            });
 
-Causas comunes y cómo corregirlo en tu código:
+            actualizarFooterCarrito();
+        }
 
-### 1. Error de CORS o ruta de archivo incorrecta
-Si estás consumiendo un archivo JSON local (ej. `menu.json`) en GitHub Pages (`decarbunco.github.io`)[cite: 1]:
-* Asegúrate de usar una ruta relativa correcta (ej. `./menu.json` o `menu.json`).
-* Revisa en la consola del navegador si hay un error `404 Not Found` o un bloqueo de política CORS.
+        function modificarCantidad(idPlato, cambio) {
+            const actual = carrito[idPlato] || 0;
+            const nuevaCant = actual + cambio;
 
-### 2. Formato del JSON inválido
-Si el archivo desde donde lees el menú tiene una coma de más o comillas mal cerradas, la llamada fallará:
-* Pasa el contenido de tu API o archivo por un validador como [JSONLint](https://jsonlint.com/).
+            if (nuevaCant <= 0) {
+                delete carrito[idPlato];
+            } else {
+                carrito[idPlato] = nuevaCant;
+            }
 
-### 3. Falta de manejo de errores en el JavaScript
-Si el código no tiene un bloque `.catch()` o `try...catch`, el texto "Cargando menú..." nunca se reemplaza si ocurre un fallo.
+            renderizarMenu();
+        }
 
-Estructura básica para resolverlo e identificar el problema:
+        function actualizarFooterCarrito() {
+            let total = 0;
+            let cantidadTotal = 0;
 
-```javascript
-async function cargarMenu() {
-  const contenedor = document.getElementById('contenedor-menu'); // Ajusta con tu ID
-  
-  try {
-    const respuesta = await fetch('menu.json'); // Cambia por tu URL/endpoint
-    if (!respuesta.ok) {
-      throw new Error(`Error en la petición: ${respuesta.status}`);
-    }
-    const platos = await respuesta.json();
-    
-    // Si no hay platillos
-    if (platos.length === 0) {
-      contenedor.innerHTML = '<p>No hay platillos disponibles por el momento.</p>';
-      return;
-    }
+            for (const id in carrito) {
+                const plato = menuPlatos.find(p => p.id == id);
+                if (plato) {
+                    const cant = carrito[id];
+                    total += plato.precio * cant;
+                    cantidadTotal += cant;
+                }
+            }
 
-    // Renderizar menú
-    contenedor.innerHTML = ''; 
-    platos.forEach(plato => {
-      // Tu lógica para insertar el HTML de cada plato
-    });
+            document.getElementById('lblTotalCart').innerText = `$${total.toFixed(2)}`;
+            const btnEnviar = document.getElementById('btnEnviar');
+            btnEnviar.disabled = cantidadTotal === 0;
+        }
 
-  } catch (error) {
-    console.error('Error al cargar el menú:', error);
-    contenedor.innerHTML = '<p style="color: red;">Error al cargar el menú. Por favor, reintenta más tarde.</p>';
-  }
-}
+        async function enviarPedido() {
+            const items = [];
+            for (const id in carrito) {
+                const plato = menuPlatos.find(p => p.id == id);
+                if (plato) {
+                    items.push({
+                        id: plato.id,
+                        nombre: plato.nombre,
+                        precio: plato.precio,
+                        cantidad: carrito[id]
+                    });
+                }
+            }
 
-cargarMenu();
+            if (items.length === 0) return;
+
+            const btnEnviar = document.getElementById('btnEnviar');
+            btnEnviar.disabled = true;
+            btnEnviar.innerText = "Enviando...";
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/pedido`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'ngrok-skip-browser-warning': 'true'
+                    },
+                    body: JSON.stringify({
+                        mesa: NUM_MESA,
+                        items: items
+                    })
+                });
+
+                if (res.ok) {
+                    alert("¡Pedido enviado a la cocina con éxito!");
+                    carrito = {};
+                    renderizarMenu();
+                } else {
+                    alert("Error al enviar el pedido.");
+                }
+            } catch (err) {
+                console.error("Error al enviar pedido:", err);
+                alert("Error de conexión al enviar el pedido.");
+            } finally {
+                btnEnviar.innerText = "Enviar Pedido";
+            }
+        }
+
+        async function toggleCuenta() {
+            const modal = document.getElementById('modalCuenta');
+            if (modal.style.display === 'block') {
+                modal.style.display = 'none';
+            } else {
+                modal.style.display = 'block';
+                await cargarAcumulado();
+            }
+        }
+
+        async function cargarAcumulado() {
+            const lista = document.getElementById('listaAcumulada');
+            const lblTotal = document.getElementById('totalMesaAcumulado');
+            lista.innerHTML = "<li>Cargando acumulado...</li>";
+
+            try {
+                const res = await fetch(`${API_BASE_URL}/acumulado/${NUM_MESA}`, {
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+                
+                if (!res.ok) throw new Error("Error obteniendo acumulado");
+
+                ¡Entendido! A partir de ahora, cada vez que revisemos o corregir un código, te entregaré el bloque de código completo y corregido para que puedas copiarlo y pegarlo directamente sin problemas.
+
+¿Hay algún código que quieras que revise en este momento?
