@@ -312,46 +312,48 @@
             btnEnviar.disabled = true;
             btnEnviar.innerText = "Enviando...";
 
-            const payload = JSON.stringify({ mesa: NUM_MESA, items: items });
+            const payloadData = { mesa: NUM_MESA, items: items };
+            const jsonString = JSON.stringify(payloadData);
 
             try {
-                let enviado = false;
-                const endpoints = [`${API_BASE_URL}/api/pedidos`, `${API_BASE_URL}/pedidos`, `${API_BASE_URL}/pedido`];
+                let enviadoExitoso = false;
+                const endpoints = [
+                    `${API_BASE_URL}/api/pedidos`,
+                    `${API_BASE_URL}/pedidos`,
+                    `${API_BASE_URL}/pedido`
+                ];
 
                 for (const url of endpoints) {
                     try {
+                        // Enviamos como text/plain para evitar la verificación OPTIONS/CORS del navegador
                         const res = await fetch(url, {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json',
+                                'Content-Type': 'text/plain',
                                 'ngrok-skip-browser-warning': 'true'
                             },
-                            body: payload
+                            body: jsonString
                         });
 
                         if (res.ok || res.status === 200 || res.status === 201) {
-                            enviado = true;
+                            enviadoExitoso = true;
                             break;
                         }
                     } catch (e) {
-                        console.warn(`Falló envío a ${url}:`, e);
+                        console.warn(`Error al intentar conectar con ${url}:`, e);
                     }
                 }
 
-                if (enviado) {
+                if (enviadoExitoso) {
                     alert("¡Pedido enviado a la cocina con éxito!");
                     carrito = {};
                     renderizarMenu();
                 } else {
-                    alert("¡Pedido enviado a la cocina!");
-                    carrito = {};
-                    renderizarMenu();
+                    alert("Error al enviar el pedido. Asegúrate de que el servidor acepte la solicitud.");
                 }
             } catch (err) {
                 console.error("Error al enviar el pedido:", err);
-                alert("¡Pedido registrado!");
-                carrito = {};
-                renderizarMenu();
+                alert("Error de conexión al enviar el pedido.");
             } finally {
                 btnEnviar.innerText = "Enviar Pedido";
             }
