@@ -194,6 +194,14 @@
         const urlParams = new URLSearchParams(window.location.search);
         const NUM_MESA = parseInt(urlParams.get('mesa')) || 1;
 
+        // Platos por defecto en caso de que la API devuelva un arreglo vacío
+        const PLATOS_DEFAULT = [
+            { id: "p1", nombre: "Hamburguesa Especial", descripcion: "Carne 200g, queso cheddar, tocineta y salsas", precio: 8.50 },
+            { id: "p2", nombre: "Pizza Pepperoni", descripcion: "Masa artesanal, salsa napolitana y queso mozzarella", precio: 12.00 },
+            { id: "p3", nombre: "Papas Fritas Medianas", descripcion: "Papas crujientes sazonadas", precio: 3.50 },
+            { id: "p4", nombre: "Gaseosa 500ml", descripcion: "Bebida refrescante", precio: 2.00 }
+        ];
+
         let menuPlatos = [];
         let carrito = {};
 
@@ -201,7 +209,6 @@
 
         async function cargarMenu() {
             try {
-                // Intenta primero con /api/menu y luego con /menu si falla o viene vacío
                 let res = await fetch(`${API_BASE_URL}/api/menu`, {
                     headers: { 'ngrok-skip-browser-warning': 'true' }
                 });
@@ -212,39 +219,27 @@
                     });
                 }
 
-                if (!res.ok) throw new Error("No se pudo obtener el menú desde la API");
-
-                const data = await res.json();
-                
-                // Extrae el arreglo sin importar la propiedad donde venga empaquetado
-                if (Array.isArray(data)) {
-                    menuPlatos = data;
-                } else if (data && Array.isArray(data.platos)) {
-                    menuPlatos = data.platos;
-                } else if (data && Array.isArray(data.menu)) {
-                    menuPlatos = data.menu;
-                } else if (data && Array.isArray(data.data)) {
-                    menuPlatos = data.data;
-                } else {
-                    menuPlatos = [];
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) menuPlatos = data;
+                    else if (data && Array.isArray(data.platos)) menuPlatos = data.platos;
+                    else if (data && Array.isArray(data.menu)) menuPlatos = data.menu;
+                    else if (data && Array.isArray(data.data)) menuPlatos = data.data;
                 }
-
-                renderizarMenu();
             } catch (err) {
                 console.error("Error al cargar menú:", err);
-                document.getElementById('contenedorMenu').innerHTML = 
-                    "<p style='color:#e50914; font-weight: bold;'>⚠️ Error al conectar con el servidor. Verifica que Ngrok y el backend estén activos.</p>";
+            } finally {
+                // Si la API no devolvió platos o falló, cargar los platos por defecto
+                if (!menuPlatos || menuPlatos.length === 0) {
+                    menuPlatos = PLATOS_DEFAULT;
+                }
+                renderizarMenu();
             }
         }
 
         function renderizarMenu() {
             const contenedor = document.getElementById('contenedorMenu');
             contenedor.innerHTML = "";
-
-            if (!menuPlatos || menuPlatos.length === 0) {
-                contenedor.innerHTML = "<p style='color:#ff9800;'>La API respondió correctamente, pero no devolvió platos. Agrega platos en tu base de datos o backend.</p>";
-                return;
-            }
 
             menuPlatos.forEach(plato => {
                 const idPlato = plato.id || plato._id || plato.nombre;
