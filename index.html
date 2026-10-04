@@ -20,7 +20,7 @@
             color: var(--text-color);
             margin: 0;
             padding: 15px;
-            padding-bottom: 100px;
+            padding-bottom: 110px;
         }
 
         header {
@@ -64,7 +64,7 @@
             border: 1px solid #444;
             border-radius: 8px;
             padding: 15px;
-            margin-bottom: 200px;
+            margin-bottom: 20px;
         }
 
         .plato-card {
@@ -114,6 +114,7 @@
 
         .btn-qty:disabled {
             background-color: #555;
+            cursor: not-allowed;
         }
 
         .qty-num {
@@ -135,6 +136,7 @@
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+            z-index: 1000;
         }
 
         .cart-total {
@@ -155,6 +157,7 @@
 
         .btn-enviar:disabled {
             background-color: #555;
+            cursor: not-allowed;
         }
     </style>
 </head>
@@ -192,20 +195,67 @@
         
         // Determinar número de mesa por parámetro URL (?mesa=1) o por defecto 1
         const urlParams = new URLSearchParams(window.location.search);
-        const NUM_MESA = parseInt(urlParams.get('mesa')) || 1;Entendido, tomamos la **Opción 2** y le añadimos el contador numérico para la cantidad de pedidos de cada plato. 
+        const NUM_MESA = parseInt(urlParams.get('mesa')) || 1;
 
-Para dejar todo claro y listo para tu desarrollo o diseño, la estructura visual y de datos queda así:
+        let platos = [];
+        let carrito = {}; // Estructura: { idPlato: cantidad }
 
----
+        document.getElementById('lblMesa').innerText = `Mesa ${NUM_MESA}`;
 
-### Muestra de interfaz / Formato de la tarjeta
+        // Cargar el menú desde el Backend
+        async function cargarMenu() {
+            try {
+                const res = await fetch(`${API_URL}/menu`);
+                platos = await res.json();
+                renderizarMenu();
+            } catch (err) {
+                console.error("Error cargando menú:", err);
+                document.getElementById('contenedorMenu').innerHTML = "<p>Error al cargar el menú. Revisa la conexión.</p>";
+            }
+        }
 
-```text
-+-------------------------------------------------------------+
-|  [ Imagen del Plato ]                                       |
-|                                                             |
-|  Ceviche Mixto                                      $12.50  |
-|  Camarón, pescado, cebolla morada y limón.                  |
-|                                                             |
-|  [ - ]  [  2  ]  [ + ]                           [ Pedir ]  |
-+-------------------------------------------------------------+
+        // Renderizar la lista de platos con botones de cantidad
+        function renderizarMenu() {
+            const contenedor = document.getElementById('contenedorMenu');
+            contenedor.innerHTML = "";
+
+            platos.forEach(plato => {
+                const cant = carrito[plato.id] || 0;
+                const card = document.createElement('div');
+                card.className = 'plato-card';
+                card.innerHTML = `
+                    <div class="plato-info">
+                        <h3>${plato.nombre}</h3>
+                        <p>${plato.descripcion || ''}</p>
+                        <div class="plato-precio">$${plato.precio.toFixed(2)}</div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn-qty" onclick="modificarCantidad(${plato.id}, -1)" ${cant === 0 ? 'disabled' : ''}>-</button>
+                        <span class="qty-num">${cant}</span>
+                        <button class="btn-qty" onclick="modificarCantidad(${plato.id}, 1)">+</button>
+                    </div>
+                `;
+                contenedor.appendChild(card);
+            });
+
+            actualizarFooterCarrito();
+        }
+
+        // Incrementar o decrementar la cantidad local
+        function modificarCantidad(idPlato, cambio) {
+            const actual = carrito[idPlato] || 0;
+            const nuevaCant = actual + cambio;
+
+            if (nuevaCant <= 0) {
+                delete carrito[idPlato];
+            } else {
+                carrito[idPlato] = nuevaCant;
+            }
+
+            renderizarMenu();
+        }
+
+        // Calcular y actualizar el total del carrito actual
+        function actualizarFooterCarritoPor supuesto. Sin embargo, no tengo acceso al historial o a los mensajes previos de nuestra conversación para ver el código ni los ajustes específicos que realizamos. 
+
+Por favor, **comparte o pega aquí el código original junto con un breve resumen de los cambios o ajustes que querías implementar**, y con gusto te reescribiré la versión final completa, limpia y totalmente integrada.
