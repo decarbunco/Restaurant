@@ -1,0 +1,8 @@
+{
+  "nombre_restaurante": "Mi Restaurante Pro",
+  "moneda": "$",
+  "numero_mesas": 5,
+  "puerto_servidor": 5000,
+  "voz_alertas": true,
+  "idioma_voz": "es"
+}
