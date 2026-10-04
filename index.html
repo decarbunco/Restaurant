@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Menú Digital</title>
+    <title>Menú Digital - Restaurante</title>
     <style>
         :root {
             --primary: #d32f2f;
@@ -19,7 +19,7 @@
             color: var(--text);
             margin: 0;
             padding: 0;
-            padding-bottom: 80px;
+            padding-bottom: 90px;
         }
 
         header {
@@ -40,11 +40,12 @@
         .mesa-badge {
             background-color: var(--primary);
             color: white;
-            padding: 3px 10px;
+            padding: 4px 12px;
             border-radius: 12px;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             display: inline-block;
             margin-top: 5px;
+            font-weight: bold;
         }
 
         .container {
@@ -55,7 +56,7 @@
 
         .categoria-titulo {
             font-size: 1.2rem;
-            color: var(--primary);
+            color: #ff5252;
             border-bottom: 1px solid #333;
             padding-bottom: 5px;
             margin-top: 20px;
@@ -96,13 +97,12 @@
             background-color: var(--primary);
             color: white;
             border: none;
-            padding: 8px 12px;
+            padding: 8px 14px;
             border-radius: 5px;
             font-weight: bold;
             cursor: pointer;
         }
 
-        /* Barra flotante del pedido */
         .cart-bar {
             position: fixed;
             bottom: 0;
@@ -128,6 +128,12 @@
             font-weight: bold;
             cursor: pointer;
         }
+
+        .status-msg {
+            text-align: center;
+            color: #ffaa00;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -150,24 +156,24 @@
     </div>
 
     <script>
-        // Dirección IP de la PC del restaurante o servidor local
+        // Cambia localhost por la IP pública o Ngrok de la PC del restaurante para pruebas externas
         const API_URL = "http://localhost:5000/api/pedido"; 
 
         let carrito = [];
         let numMesa = 1;
 
-        // Obtener la mesa desde los parámetros de la URL (?mesa=1)
+        // Detectar mesa de la URL (?mesa=1)
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('mesa')) {
             numMesa = parseInt(urlParams.get('mesa'));
         }
         document.getElementById('mesa-tag').innerText = `Mesa ${numMesa}`;
 
-        // Cargar platos desde platos.json
+        // Cargar menú desde platos.json
         fetch('platos.json')
             .then(res => res.json())
             .then(platos => renderMenu(platos))
-            .catch(err => console.error("Error al cargar el menú:", err));
+            .catch(err => console.error("Error al cargar menú:", err));
 
         function renderMenu(platos) {
             const container = document.getElementById('menu-container');
@@ -202,31 +208,43 @@
             if (item) {
                 item.cantidad += 1;
             } else {
-                carrito.push({ ...plato, cantidad: 1Para crear la estructura básica de una página web en tu archivo `index.html`, debes incluir la plantilla estándar de HTML5. 
+                carrito.push({ ...plato, cantidad: 1 });
+            }
+            actualizarTotal();
+        }
 
-Copia y pega este código dentro de tu archivo `index.html`:
+        function actualizarTotal() {
+            const total = carrito.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+            document.getElementById('total-pedido').innerText = `$${total.toFixed(2)}`;
+        }
 
-```html
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Sitio Web</title>
-</head>
-<body>
+        function enviarPedido() {
+            if (carrito.length === 0) {
+                alert("Selecciona al menos un plato antes de enviar.");
+                return;
+            }
 
-    <header>
-        <h1>¡Bienvenido a mi sitio web!</h1>
-    </header>
+            const payload = {
+                mesa: numMesa,
+                items: carrito
+            };
 
-    <main>
-        <p>Este es mi primer sitio hospedado en GitHub.</p>
-    </main>
-
-    <footer>
-        <p>© 2026 - Creado con GitHub Pages</p>
-    </footer>
-
+            fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert("¡Pedido enviado a la cocina con éxito!");
+                carrito = [];
+                actualizarTotal();
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error al enviar el pedido. Asegúrate de que la caja esté conectada.");
+            });
+        }
+    </script>
 </body>
 </html>
