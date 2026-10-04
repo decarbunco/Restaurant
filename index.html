@@ -205,7 +205,20 @@
                     headers: { 'ngrok-skip-browser-warning': 'true' }
                 });
                 if (!res.ok) throw new Error("Error en la respuesta de la red");
-                menuPlatos = await res.json();
+                
+                const data = await res.json();
+                
+                // Normalizar respuesta por si viene como { platos: [...] } o [...]
+                if (Array.isArray(data)) {
+                    menuPlatos = data;
+                } else if (data && Array.isArray(data.platos)) {
+                    menuPlatos = data.platos;
+                } else if (data && Array.isArray(data.data)) {
+                    menuPlatos = data.data;
+                } else {
+                    menuPlatos = [];
+                }
+
                 renderizarMenu();
             } catch (err) {
                 console.error("Error al cargar menú:", err);
@@ -219,7 +232,7 @@
             contenedor.innerHTML = "";
 
             if (!menuPlatos || menuPlatos.length === 0) {
-                contenedor.innerHTML = "<p>No hay platos disponibles en este momento.</p>";
+                contenedor.innerHTML = "<p>No hay platos disponibles en este momento. Revisa si agregaste productos a la base de datos.</p>";
                 return;
             }
 
@@ -233,7 +246,7 @@
                     <div class="plato-info">
                         <h3>${plato.nombre}</h3>
                         <p>${plato.descripcion || ''}</p>
-                        <div class="plato-precio">$${Number(plato.precio).toFixed(2)}</div>
+                        <div class="plato-precio">$${Number(plato.precio || 0).toFixed(2)}</div>
                     </div>
                     <div class="controls">
                         <button class="btn-qty" onclick="modificarCantidad('${idPlato}', -1)" ${cant === 0 ? 'disabled' : ''}>-</button>
