@@ -188,6 +188,7 @@
         <div class="cart-total">Total Carrito: <span id="lblTotalCart" style="color:#4caf50;">$0.00</span></div>
         <button class="btn-enviar" id="btnEnviar" onclick="enviarPedido()" disabled>Enviar Pedido</button>
     </div>
+
     <script>
         const API_BASE_URL = "https://radiator-conceal-finally.ngrok-free.dev";
         const urlParams = new URLSearchParams(window.location.search);
@@ -200,15 +201,16 @@
 
         async function cargarMenu() {
             try {
-                const res = await fetch(`${API_BASE_URL}/menu`, {
+                const res = await fetch(`${API_BASE_URL}/api/menu`, {
                     headers: { 'ngrok-skip-browser-warning': 'true' }
                 });
-                if (!res.ok) throw new Error("Error en la respuesta de la API");
+                if (!res.ok) throw new Error("Error en la respuesta de la red");
                 menuPlatos = await res.json();
                 renderizarMenu();
             } catch (err) {
-                console.error("Error al cargar el menú:", err);
-                document.getElementById('contenedorMenu').innerHTML = "<p style='color:#e50914;'>Error al conectar con la caja. Asegúrate de tener Ngrok y el servidor activos.</p>";
+                console.error("Error al cargar menú:", err);
+                document.getElementById('contenedorMenu').innerHTML = 
+                    "<p style='color:#e50914; font-weight: bold;'>⚠️ Error al conectar con el servidor. Verifica que Ngrok y la API estén activos.</p>";
             }
         }
 
@@ -222,19 +224,21 @@
             }
 
             menuPlatos.forEach(plato => {
-                const cant = carrito[plato.id] || 0;
+                const idPlato = plato.id || plato._id || plato.nombre;
+                const cant = carrito[idPlato] ? carrito[idPlato].cantidad : 0;
+                
                 const card = document.createElement('div');
                 card.className = 'plato-card';
                 card.innerHTML = `
                     <div class="plato-info">
                         <h3>${plato.nombre}</h3>
                         <p>${plato.descripcion || ''}</p>
-                        <div class="plato-precio">$${plato.precio.toFixed(2)}</div>
+                        <div class="plato-precio">$${Number(plato.precio).toFixed(2)}</div>
                     </div>
                     <div class="controls">
-                        <button class="btn-qty" onclick="modificarCantidad(${plato.id}, -1)" ${cant === 0 ? 'disabled' : ''}>-</button>
+                        <button class="btn-qty" onclick="modificarCantidad('${idPlato}', -1)" ${cant === 0 ? 'disabled' : ''}>-</button>
                         <span class="qty-num">${cant}</span>
-                        <button class="btn-qty" onclick="modificarCantidad(${plato.id}, 1)">+</button>
+                        <button class="btn-qty" onclick="modificarCantidad('${idPlato}', 1)">+</button>
                     </div>
                 `;
                 contenedor.appendChild(card);
@@ -244,13 +248,17 @@
         }
 
         function modificarCantidad(idPlato, cambio) {
-            const actual = carrito[idPlato] || 0;
-            const nuevaCant = actual + cambio;
+            const plato = menuPlatos.find(p => (p.id || p._id || p.nombre) === idPlato);
+            if (!plato) return;
 
-            if (nuevaCant <= 0) {
+            if (!carrito[idPlato]) {
+                carrito[idPlato] = { plato: plato, cantidad: 0 };
+            }
+
+            carrito[idPlato].cantidad += cambio;
+
+            if (carrito[idPlato].cantidad <= 0) {
                 delete carrito[idPlato];
-            } else {
-                carrito[idPlato] = nuevaCant;
             }
 
             renderizarMenu();
@@ -260,32 +268,25 @@
             let total = 0;
             let cantidadTotal = 0;
 
-            for (const id in carrito) {
-                const plato = menuPlatos.find(p => p.id == id);
-                if (plato) {
-                    const cant = carrito[id];
-                    total += plato.precio * cant;
-                    cantidadTotal += cant;
-                }
+            for (const key in carrito) {
+                const item = carrito[key];
+                total += item.plato.precio * item.cantidad;
+                cantidadTotal += item.cantidad;
             }
 
             document.getElementById('lblTotalCart').innerText = `$${total.toFixed(2)}`;
-            const btnEnviar = document.getElementById('btnEnviar');
-            btnEnviar.disabled = cantidadTotal === 0;
+            document.getElementById('btnEnviar').disabled = cantidadTotal === 0;
         }
 
         async function enviarPedido() {
             const items = [];
-            for (const id in carrito) {
-                const plato = menuPlatos.find(p => p.id == id);
-                if (plato) {
-                    items.push({
-                        id: plato.id,
-                        nombre: plato.nombre,
-                        precio: plato.precio,
-                        cantidad: carrito[id]
-                    });
-                }
+            for (const key in carrito) {
+                const item = carrito[key];
+                items.push({
+                    nombre: item.plato.nombre,
+                    precio: item.plato.precio,
+                    cantidad: item.cantidad
+                });
             }
 
             if (items.length === 0) return;
@@ -295,7 +296,7 @@
             btnEnviar.innerText = "Enviando...";
 
             try {
-                const res = await fetch(`${API_BASE_URL}/pedido`, {
+                const res = await fetch(`${API_BASE_URL}/api/pedidos`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -315,7 +316,7 @@
                     alert("Error al enviar el pedido.");
                 }
             } catch (err) {
-                console.error("Error al enviar pedido:", err);
+                console.error("Error al enviar el pedido:", err);
                 alert("Error de conexión al enviar el pedido.");
             } finally {
                 btnEnviar.innerText = "Enviar Pedido";
@@ -338,12 +339,35 @@
             lista.innerHTML = "<li>Cargando acumulado...</li>";
 
             try {
-                const res = await fetch(`${API_BASE_URL}/acumulado/${NUM_MESA}`, {
+                const res = await fetch(`${API_BASE_URL}/api/acumulado/${NUM_MESA}`, {
                     headers: { 'ngrok-skip-browser-warning': 'true' }
                 });
-                
-                if (!res.ok) throw new Error("Error obteniendo acumulado");
 
-                ¡Entendido! A partir de ahora, cada vez que revisemos o corregir un código, te entregaré el bloque de código completo y corregido para que puedas copiarlo y pegarlo directamente sin problemas.
+                if (!res.ok) throw new Error("Error al obtener el acumulado");
 
-¿Hay algún código que quieras que revise en este momento?
+                const datos = await res.json();
+                lista.innerHTML = "";
+
+                if (!datos.items || datos.items.length === 0) {
+                    lista.innerHTML = "<li>No hay consumo registrado aún.</li>";
+                    lblTotal.innerText = "$0.00";
+                    return;
+                }
+
+                datos.items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.innerText = `${item.cantidad}x ${item.nombre} - $${(item.precio * item.cantidad).toFixed(2)}`;
+                    lista.appendChild(li);
+                });
+
+                lblTotal.innerText = `$${Number(datos.total || 0).toFixed(2)}`;
+            } catch (err) {
+                console.error("Error acumulado:", err);
+                lista.innerHTML = "<li style='color:#e50914;'>Error al obtener la cuenta.</li>";
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', cargarMenu);
+    </script>
+</body>
+</html>
