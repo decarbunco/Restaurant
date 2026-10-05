@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Menú Restaurante Central</title>
+    <!-- Carga de PDF.js para renderizar hojas específicas del PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         :root {
             --bg-color: #121212;
@@ -67,19 +69,45 @@
             margin-bottom: 15px;
         }
 
+        /* Tarjeta del Plato y Miniatura PDF */
         .plato-card {
             background-color: var(--card-bg);
             border-radius: 10px;
-            padding: 15px;
+            padding: 12px;
             margin-bottom: 15px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 12px;
+        }
+
+        .plato-thumb {
+            width: 65px;
+            height: 65px;
+            border-radius: 8px;
+            object-fit: cover;
+            cursor: pointer;
+            border: 1px solid #444;
+            background-color: #000;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .plato-thumb canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .plato-info {
+            flex-grow: 1;
         }
 
         .plato-info h3 {
             margin: 0 0 5px 0;
-            font-size: 16px;
+            font-size: 15px;
         }
 
         .plato-info p {
@@ -97,15 +125,15 @@
         .controls {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
         .btn-qty {
             background-color: var(--accent-color);
             color: white;
             border: none;
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             font-size: 18px;
             font-weight: bold;
@@ -118,9 +146,9 @@
         }
 
         .qty-num {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: bold;
-            min-width: 20px;
+            min-width: 18px;
             text-align: center;
         }
 
@@ -159,6 +187,30 @@
             background-color: #555;
             cursor: not-allowed;
         }
+
+        /* --- POPUP MODAL VISTA PREVIA (Máximo 1/3 de la pantalla) --- */
+        .img-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.75);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .img-modal-content {
+            max-width: 85vw;
+            max-height: 33vh; /* Restringido a 1/3 del alto de la pantalla */
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            border: 2px solid var(--accent-color);
+            background: #000;
+            object-fit: contain;
+        }
     </style>
 </head>
 <body>
@@ -184,39 +236,57 @@
         <p>Cargando menú...</p>
     </div>
 
+    <!-- POPUP EMERGENTE PARA LA HOJA DEL PDF -->
+    <div class="img-modal-overlay" id="popupImagen" onclick="cerrarPopupImagen()">
+        <canvas class="img-modal-content" id="canvasPopup"></canvas>
+    </div>
+
     <div class="footer-cart">
         <div class="cart-total">Total Carrito: <span id="lblTotalCart" style="color:#4caf50;">$0.00</span></div>
         <button class="btn-enviar" id="btnEnviar" onclick="enviarPedido()" disabled>Enviar Pedido</button>
     </div>
 
     <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
         const API_BASE_URL = "https://radiator-conceal-finally.ngrok-free.dev";
         const urlParams = new URLSearchParams(window.location.search);
         const NUM_MESA = parseInt(urlParams.get('mesa')) || 1;
 
+        // Asignación de páginas del PDF por id o nombre del plato
         const PLATOS_DEFAULT = [
-            { id: "p1", nombre: "Hamburguesa Especial", descripcion: "Carne 200g, queso cheddar, tocineta y salsas", precio: 8.50 },
-            { id: "p2", nombre: "Pizza Pepperoni", descripcion: "Masa artesanal, salsa napolitana y queso mozzarella", precio: 12.00 },
+            { id: "p1", nombre: "Hamburguesa Especial", descripcion: "Carne 200g, queso cheddar, tocineta y salsas", precio: 8.50, pagPdf: 1 },
+            { id: "p2", nombre: "Pasta", descripcion: "Pasta italiana artesanal", precio: 10.00, pagPdf: 2 },
             { id: "p3", nombre: "Papas Fritas Medianas", descripcion: "Papas crujientes sazonadas", precio: 3.50 },
             { id: "p4", nombre: "Gaseosa 500ml", descripcion: "Bebida refrescante", precio: 2.00 }
         ];
 
         let menuPlatos = [];
         let carrito = {};
+        let pdfDocGlobal = null;
 
         document.getElementById('lblMesa').innerText = `Mesa ${NUM_MESA}`;
 
         async function cargarMenu() {
             const contenedor = document.getElementById('contenedorMenu');
-            contenedor.innerHTML = "<p>Cargando menú desde GitHub...</p>";
+            contenedor.innerHTML = "<p>Cargando menú...</p>";
             
             const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/decarbunco/Restaurant/main";
+
+            // Intentar cargar platos.pdf para la vista previa
+            try {
+                let urlPdf = './platos.pdf';
+                pdfDocGlobal = await pdfjsLib.getDocument(urlPdf).promise.catch(async () => {
+                    return await pdfjsLib.getDocument(`${GITHUB_RAW_BASE}/platos.pdf`).promise;
+                });
+            } catch (pdfErr) {
+                console.warn("No se pudo cargar el archivo PDF de los platos:", pdfErr);
+            }
 
             try {
                 let listaPlatos = [];
                 let listaBebidas = [];
 
-                // 1. Cargar platos.json (Primero relativo, respaldo a Raw GitHub)
                 try {
                     let resP = await fetch('./platos.json');
                     if (!resP.ok) resP = await fetch(`${GITHUB_RAW_BASE}/platos.json`);
@@ -225,7 +295,6 @@
                     console.warn("No se pudo cargar platos.json:", e);
                 }
 
-                // 2. Cargar bebidas.json (Primero relativo, respaldo a Raw GitHub)
                 try {
                     let resB = await fetch('./bebidas.json');
                     if (!resB.ok) resB = await fetch(`${GITHUB_RAW_BASE}/bebidas.json`);
@@ -234,15 +303,21 @@
                     console.warn("No se pudo cargar bebidas.json:", e);
                 }
 
-                // 3. Unir platos y bebidas
                 menuPlatos = [...listaPlatos, ...listaBebidas];
 
             } catch (err) {
                 console.error("Error general al cargar menú:", err);
             } finally {
                 if (!menuPlatos || menuPlatos.length === 0) {
-                    console.log("Usando menú por defecto PLATOS_DEFAULT");
                     menuPlatos = PLATOS_DEFAULT;
+                } else {
+                    // Mapear páginas de PDF a los platos si no están definidas en el .json
+                    menuPlatos.forEach((p, idx) => {
+                        if (!p.pagPdf) {
+                            if (p.nombre.toLowerCase().includes('hamburguesa')) p.pagPdf = 1;
+                            else if (p.nombre.toLowerCase().includes('pasta')) p.pagPdf = 2;
+                        }
+                    });
                 }
                 renderizarMenu();
             }
@@ -255,10 +330,21 @@
             menuPlatos.forEach(plato => {
                 const idPlato = plato.id || plato._id || plato.nombre;
                 const cant = carrito[idPlato] ? carrito[idPlato].cantidad : 0;
-                
+                const numPaginaPdf = plato.pagPdf || (plato.nombre.toLowerCase().includes('hamburguesa') ? 1 : (plato.nombre.toLowerCase().includes('pasta') ? 2 : null));
+
                 const card = document.createElement('div');
                 card.className = 'plato-card';
+
+                // Miniatura
+                let thumbHTML = '';
+                if (numPaginaPdf) {
+                    thumbHTML = `<div class="plato-thumb" onclick="abrirPopupPDF(${numPaginaPdf})">
+                        <canvas id="thumb_canvas_${idPlato}"></canvas>
+                    </div>`;
+                }
+
                 card.innerHTML = `
+                    ${thumbHTML}
                     <div class="plato-info">
                         <h3>${plato.nombre || plato.title}</h3>
                         <p>${plato.descripcion || plato.description || ''}</p>
@@ -271,9 +357,56 @@
                     </div>
                 `;
                 contenedor.appendChild(card);
+
+                if (numPaginaPdf && pdfDocGlobal) {
+                    renderizarMiniaturaPdf(`thumb_canvas_${idPlato}`, numPaginaPdf);
+                }
             });
 
             actualizarFooterCarrito();
+        }
+
+        // Renderizar la miniatura pequeña del PDF en la tarjeta
+        async function renderizarMiniaturaPdf(canvasId, numPagina) {
+            if (!pdfDocGlobal) return;
+            try {
+                const page = await pdfDocGlobal.getPage(numPagina);
+                const canvas = document.getElementById(canvasId);
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const viewport = page.getViewport({ scale: 0.3 });
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            } catch (e) {
+                console.warn(`Error al renderizar miniatura de página ${numPagina}:`, e);
+            }
+        }
+
+        // Abrir popup con máximo 1/3 de pantalla
+        async function abrirPopupPDF(numPagina) {
+            if (!pdfDocGlobal) return;
+            const modal = document.getElementById('popupImagen');
+            const canvas = document.getElementById('canvasPopup');
+            const ctx = canvas.getContext('2d');
+
+            try {
+                const page = await pdfDocGlobal.getPage(numPagina);
+                const viewport = page.getViewport({ scale: 1.0 });
+                
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+                modal.style.display = 'flex';
+            } catch (e) {
+                console.error("Error mostrando vista previa ampliada:", e);
+            }
+        }
+
+        function cerrarPopupImagen() {
+            document.getElementById('popupImagen').style.display = 'none';
         }
 
         function modificarCantidad(idPlato, cambio) {
