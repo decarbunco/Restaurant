@@ -207,28 +207,41 @@
         document.getElementById('lblMesa').innerText = `Mesa ${NUM_MESA}`;
 
         async function cargarMenu() {
+            const contenedor = document.getElementById('contenedorMenu');
+            contenedor.innerHTML = "<p>Cargando menú desde GitHub...</p>";
+            
+            const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/decarbunco/Restaurant/main";
+
             try {
-                let res = await fetch(`${API_BASE_URL}/api/menu`, {
-                    headers: { 'ngrok-skip-browser-warning': 'true' }
-                });
+                let listaPlatos = [];
+                let listaBebidas = [];
 
-                if (!res.ok) {
-                    res = await fetch(`${API_BASE_URL}/menu`, {
-                        headers: { 'ngrok-skip-browser-warning': 'true' }
-                    });
+                // 1. Cargar platos.json (Primero relativo, respaldo a Raw GitHub)
+                try {
+                    let resP = await fetch('./platos.json');
+                    if (!resP.ok) resP = await fetch(`${GITHUB_RAW_BASE}/platos.json`);
+                    if (resP.ok) listaPlatos = await resP.json();
+                } catch (e) {
+                    console.warn("No se pudo cargar platos.json:", e);
                 }
 
-                if (res.ok) {
-                    const data = await res.json();
-                    if (Array.isArray(data)) menuPlatos = data;
-                    else if (data && Array.isArray(data.platos)) menuPlatos = data.platos;
-                    else if (data && Array.isArray(data.menu)) menuPlatos = data.menu;
-                    else if (data && Array.isArray(data.data)) menuPlatos = data.data;
+                // 2. Cargar bebidas.json (Primero relativo, respaldo a Raw GitHub)
+                try {
+                    let resB = await fetch('./bebidas.json');
+                    if (!resB.ok) resB = await fetch(`${GITHUB_RAW_BASE}/bebidas.json`);
+                    if (resB.ok) listaBebidas = await resB.json();
+                } catch (e) {
+                    console.warn("No se pudo cargar bebidas.json:", e);
                 }
+
+                // 3. Unir platos y bebidas
+                menuPlatos = [...listaPlatos, ...listaBebidas];
+
             } catch (err) {
-                console.error("Error al cargar menú:", err);
+                console.error("Error general al cargar menú:", err);
             } finally {
                 if (!menuPlatos || menuPlatos.length === 0) {
+                    console.log("Usando menú por defecto PLATOS_DEFAULT");
                     menuPlatos = PLATOS_DEFAULT;
                 }
                 renderizarMenu();
@@ -312,13 +325,12 @@
             btnEnviar.disabled = true;
             btnEnviar.innerText = "Enviando...";
 
-            // Obtener el token de sesión guardado para esta mesa
             const tokenGuardado = localStorage.getItem(`token_mesa_${NUM_MESA}`);
 
             const payloadData = { 
                 mesa: NUM_MESA, 
                 items: items,
-                token: tokenGuardado // <-- Se envía el token existente al servidor
+                token: tokenGuardado
             };
             const jsonString = JSON.stringify(payloadData);
 
@@ -346,15 +358,13 @@
 
                         if (res.ok || res.status === 200 || res.status === 201) {
                             enviadoExitoso = true;
-                            // Si el servidor envía un nuevo token, lo guardamos localmente
                             if (resData.token) {
                                 localStorage.setItem(`token_mesa_${NUM_MESA}`, resData.token);
                             }
                             break;
                         } else if (res.status === 403 || res.status === 401) {
-                            // La cuenta ya fue cerrada en el servidor
                             mensajeError = resData.mensaje || "La cuenta para esta mesa ya fue cerrada. Por favor, solicite una nueva sesión.";
-                            localStorage.removeItem(`token_mesa_${NUM_MESA}`); // Limpiar token inválido
+                            localStorage.removeItem(`token_mesa_${NUM_MESA}`);
                             break;
                         }
                     } catch (e) {
