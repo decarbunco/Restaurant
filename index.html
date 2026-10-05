@@ -253,10 +253,9 @@
         const urlParams = new URLSearchParams(window.location.search);
         const NUM_MESA = parseInt(urlParams.get('mesa')) || 1;
 
-        // Asignación de páginas del PDF por id o nombre del plato
         const PLATOS_DEFAULT = [
             { id: "p1", nombre: "Hamburguesa Especial", descripcion: "Carne 200g, queso cheddar, tocineta y salsas", precio: 8.50, pagPdf: 1 },
-            { id: "p2", nombre: "Pasta", descripcion: "Pasta italiana artesanal", precio: 10.00, pagPdf: 2 },
+            { id: "p2", nombre: "Spagueti", descripcion: "Pasta con salsa artesanal", precio: 10.00, pagPdf: 2 },
             { id: "p3", nombre: "Papas Fritas Medianas", descripcion: "Papas crujientes sazonadas", precio: 3.50 },
             { id: "p4", nombre: "Gaseosa 500ml", descripcion: "Bebida refrescante", precio: 2.00 }
         ];
@@ -267,13 +266,30 @@
 
         document.getElementById('lblMesa').innerText = `Mesa ${NUM_MESA}`;
 
+        // Función auxiliar para detectar qué página del PDF corresponde según el nombre del plato
+        function obtenerPaginaPdf(plato) {
+            if (plato.pagPdf) return plato.pagPdf;
+            
+            const nombre = (plato.nombre || plato.title || '').toLowerCase();
+            
+            // Hoja 1: Hamburguesas
+            if (nombre.includes('hamburguesa') || nombre.includes('burger')) {
+                return 1;
+            }
+            // Hoja 2: Spagueti / Pastas
+            if (nombre.includes('spagueti') || nombre.includes('espagueti') || nombre.includes('spaghetti') || nombre.includes('pasta')) {
+                return 2;
+            }
+            return null;
+        }
+
         async function cargarMenu() {
             const contenedor = document.getElementById('contenedorMenu');
             contenedor.innerHTML = "<p>Cargando menú...</p>";
             
             const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/decarbunco/Restaurant/main";
 
-            // Intentar cargar platos.pdf para la vista previa
+            // Cargar platos.pdf
             try {
                 let urlPdf = './platos.pdf';
                 pdfDocGlobal = await pdfjsLib.getDocument(urlPdf).promise.catch(async () => {
@@ -310,14 +326,6 @@
             } finally {
                 if (!menuPlatos || menuPlatos.length === 0) {
                     menuPlatos = PLATOS_DEFAULT;
-                } else {
-                    // Mapear páginas de PDF a los platos si no están definidas en el .json
-                    menuPlatos.forEach((p, idx) => {
-                        if (!p.pagPdf) {
-                            if (p.nombre.toLowerCase().includes('hamburguesa')) p.pagPdf = 1;
-                            else if (p.nombre.toLowerCase().includes('pasta')) p.pagPdf = 2;
-                        }
-                    });
                 }
                 renderizarMenu();
             }
@@ -330,12 +338,14 @@
             menuPlatos.forEach(plato => {
                 const idPlato = plato.id || plato._id || plato.nombre;
                 const cant = carrito[idPlato] ? carrito[idPlato].cantidad : 0;
-                const numPaginaPdf = plato.pagPdf || (plato.nombre.toLowerCase().includes('hamburguesa') ? 1 : (plato.nombre.toLowerCase().includes('pasta') ? 2 : null));
+                
+                // Mapear la página del PDF asociada al plato
+                const numPaginaPdf = obtenerPaginaPdf(plato);
 
                 const card = document.createElement('div');
                 card.className = 'plato-card';
 
-                // Miniatura
+                // Miniatura en caso de existir página asignada
                 let thumbHTML = '';
                 if (numPaginaPdf) {
                     thumbHTML = `<div class="plato-thumb" onclick="abrirPopupPDF(${numPaginaPdf})">
