@@ -312,11 +312,19 @@
             btnEnviar.disabled = true;
             btnEnviar.innerText = "Enviando...";
 
-            const payloadData = { mesa: NUM_MESA, items: items };
+            // Obtener el token de sesión guardado para esta mesa
+            const tokenGuardado = localStorage.getItem(`token_mesa_${NUM_MESA}`);
+
+            const payloadData = { 
+                mesa: NUM_MESA, 
+                items: items,
+                token: tokenGuardado // <-- Se envía el token existente al servidor
+            };
             const jsonString = JSON.stringify(payloadData);
 
             try {
                 let enviadoExitoso = false;
+                let mensajeError = "";
                 const endpoints = [
                     `${API_BASE_URL}/api/pedidos`,
                     `${API_BASE_URL}/pedidos`,
@@ -325,7 +333,6 @@
 
                 for (const url of endpoints) {
                     try {
-                        // Enviamos como text/plain para evitar la verificación OPTIONS/CORS del navegador
                         const res = await fetch(url, {
                             method: 'POST',
                             headers: {
@@ -335,8 +342,19 @@
                             body: jsonString
                         });
 
+                        const resData = await res.json().catch(() => ({}));
+
                         if (res.ok || res.status === 200 || res.status === 201) {
                             enviadoExitoso = true;
+                            // Si el servidor envía un nuevo token, lo guardamos localmente
+                            if (resData.token) {
+                                localStorage.setItem(`token_mesa_${NUM_MESA}`, resData.token);
+                            }
+                            break;
+                        } else if (res.status === 403 || res.status === 401) {
+                            // La cuenta ya fue cerrada en el servidor
+                            mensajeError = resData.mensaje || "La cuenta para esta mesa ya fue cerrada. Por favor, solicite una nueva sesión.";
+                            localStorage.removeItem(`token_mesa_${NUM_MESA}`); // Limpiar token inválido
                             break;
                         }
                     } catch (e) {
@@ -348,6 +366,8 @@
                     alert("¡Pedido enviado a la cocina con éxito!");
                     carrito = {};
                     renderizarMenu();
+                } else if (mensajeError) {
+                    alert(mensajeError);
                 } else {
                     alert("Error al enviar el pedido. Asegúrate de que el servidor acepte la solicitud.");
                 }
@@ -356,6 +376,7 @@
                 alert("Error de conexión al enviar el pedido.");
             } finally {
                 btnEnviar.innerText = "Enviar Pedido";
+                actualizarFooterCarrito();
             }
         }
 
@@ -374,15 +395,24 @@
             const lblTotal = document.getElementById('totalMesaAcumulado');
             lista.innerHTML = "<li>Cargando acumulado...</li>";
 
+            const tokenGuardado = localStorage.getItem(`token_mesa_${NUM_MESA}`);
+
             try {
-                let res = await fetch(`${API_BASE_URL}/api/acumulado/${NUM_MESA}`, {
+                let res = await fetch(`${API_BASE_URL}/api/acumulado/${NUM_MESA}?token=${tokenGuardado || ''}`, {
                     headers: { 'ngrok-skip-browser-warning': 'true' }
                 });
 
                 if (!res.ok) {
-                    res = await fetch(`${API_BASE_URL}/acumulado/${NUM_MESA}`, {
+                    res = await fetch(`${API_BASE_URL}/acumulado/${NUM_MESA}?token=${tokenGuardado || ''}`, {
                         headers: { 'ngrok-skip-browser-warning': 'true' }
                     });
+                }
+
+                if (res.status === 403 || res.status === 401) {
+                    lista.innerHTML = "<li style='color:#e50914;'>La cuenta ha sido cerrada.</li>";
+                    lblTotal.innerText = "$0.00";
+                    localStorage.removeItem(`token_mesa_${NUM_MESA}`);
+                    return;
                 }
 
                 if (!res.ok) throw new Error("Error al obtener el acumulado");
