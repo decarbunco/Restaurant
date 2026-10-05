@@ -1,0 +1,18 @@
+[
+  {
+    "id": "B01",
+    "nombre": "coca-cola 200ml",
+    "categoria": "Bebidas",
+    "precio": 2.00,
+    "descripcion": "bebida Coca-Cola de 200ml",
+    "disponible": true
+  },
+  {
+    "id": "B02",
+    "nombre": "fanta",
+    "categoria": "Bebidas",
+    "precio": 2.00,
+    "descripcion": "bebida Fanta de 200ml",
+    "disponible": true
+  }
+]
