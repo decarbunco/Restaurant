@@ -78,6 +78,42 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            position: relative;
+            transition: filter 0.3s ease, opacity 0.3s ease;
+        }
+
+        /* ESTILOS PARA PLATOS AGOTADOS */
+        .plato-card.agotado {
+            filter: grayscale(100%);
+            opacity: 0.55;
+        }
+
+        .plato-card.agotado .controls button {
+            pointer-events: none;
+            background-color: #444 !important;
+            cursor: not-allowed;
+        }
+
+        .badge-agotado {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(213, 0, 0, 0.92);
+            color: #ffffff;
+            font-weight: 800;
+            font-size: 13px;
+            padding: 6px 14px;
+            border-radius: 6px;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.8);
+            z-index: 10;
+            text-transform: uppercase;
+        }
+
+        .plato-card.agotado .badge-agotado {
+            display: block;
         }
 
         .plato-thumb {
@@ -188,7 +224,7 @@
             cursor: not-allowed;
         }
 
-        /* --- POPUP MODAL VISTA PREVIA (Máximo 1/3 de la pantalla) --- */
+        /* --- POPUP MODAL VISTA PREVIA --- */
         .img-modal-overlay {
             display: none;
             position: fixed;
@@ -204,7 +240,7 @@
 
         .img-modal-content {
             max-width: 85vw;
-            max-height: 33vh; /* Restringido a 1/3 del alto de la pantalla */
+            max-height: 33vh;
             border-radius: 10px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.8);
             border: 2px solid var(--accent-color);
@@ -261,26 +297,43 @@
         ];
 
         let menuPlatos = [];
+        let productosAgotados = [];
         let carrito = {};
         let pdfDocGlobal = null;
 
         document.getElementById('lblMesa').innerText = `Mesa ${NUM_MESA}`;
 
-        // Función auxiliar para detectar qué página del PDF corresponde según el nombre del plato
         function obtenerPaginaPdf(plato) {
             if (plato.pagPdf) return plato.pagPdf;
             
             const nombre = (plato.nombre || plato.title || '').toLowerCase();
             
-            // Hoja 1: Hamburguesas
             if (nombre.includes('hamburguesa') || nombre.includes('burger')) {
                 return 1;
             }
-            // Hoja 2: Spagueti / Pastas
             if (nombre.includes('spagueti') || nombre.includes('espagueti') || nombre.includes('spaghetti') || nombre.includes('pasta')) {
                 return 2;
             }
             return null;
+        }
+
+        async function obtenerProductosAgotados() {
+            try {
+                let res = await fetch(`${API_BASE_URL}/api/agotados`, {
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
+                });
+                if (!res.ok) {
+                    res = await fetch(`${API_BASE_URL}/agotados`, {
+                        headers: { 'ngrok-skip-browser-warning': 'true' }
+                    });
+                }
+                if (res.ok) {
+                    productosAgotados = await res.json();
+                }
+            } catch (e) {
+                console.warn("No se pudo obtener la lista de agotados:", e);
+                productosAgotados = [];
+            }
         }
 
         async function cargarMenu() {
@@ -289,7 +342,10 @@
             
             const GITHUB_RAW_BASE = "https://raw.githubusercontent.com/decarbunco/Restaurant/main";
 
-            // Cargar platos.pdf
+            // 1. Obtener lista de productos agotados desde el servidor Python
+            await obtenerProductosAgotados();
+
+            // 2. Cargar PDF de platos
             try {
                 let urlPdf = './platos.pdf';
                 pdfDocGlobal = await pdfjsLib.getDocument(urlPdf).promise.catch(async () => {
@@ -299,6 +355,7 @@
                 console.warn("No se pudo cargar el archivo PDF de los platos:", pdfErr);
             }
 
+            // 3. Cargar los archivos JSON del menú
             try {
                 let listaPlatos = [];
                 let listaBebidas = [];
@@ -336,16 +393,16 @@
             contenedor.innerHTML = "";
 
             menuPlatos.forEach(plato => {
-                const idPlato = plato.id || plato._id || plato.nombre;
+                const nombrePlato = plato.nombre || plato.title;
+                const idPlato = plato.id || plato._id || nombrePlato;
                 const cant = carrito[idPlato] ? carrito[idPlato].cantidad : 0;
                 
-                // Mapear la página del PDF asociada al plato
+                const estaAgotado = productosAgotados.includes(nombrePlato);
                 const numPaginaPdf = obtenerPaginaPdf(plato);
 
                 const card = document.createElement('div');
-                card.className = 'plato-card';
+                card.className = `plato-card ${estaAgotado ? 'agotado' : ''}`;
 
-                // Miniatura en caso de existir página asignada
                 let thumbHTML = '';
                 if (numPaginaPdf) {
                     thumbHTML = `<div class="plato-thumb" onclick="abrirPopupPDF(${numPaginaPdf})">
@@ -354,16 +411,17 @@
                 }
 
                 card.innerHTML = `
+                    <div class="badge-agotado">AGOTADO</div>
                     ${thumbHTML}
                     <div class="plato-info">
-                        <h3>${plato.nombre || plato.title}</h3>
+                        <h3>${nombrePlato}</h3>
                         <p>${plato.descripcion || plato.description || ''}</p>
                         <div class="plato-precio">$${Number(plato.precio || plato.price || 0).toFixed(2)}</div>
                     </div>
                     <div class="controls">
-                        <button class="btn-qty" onclick="modificarCantidad('${idPlato}', -1)" ${cant === 0 ? 'disabled' : ''}>-</button>
+                        <button class="btn-qty" onclick="modificarCantidad('${idPlato}', -1)" ${cant === 0 || estaAgotado ? 'disabled' : ''}>-</button>
                         <span class="qty-num">${cant}</span>
-                        <button class="btn-qty" onclick="modificarCantidad('${idPlato}', 1)">+</button>
+                        <button class="btn-qty" onclick="modificarCantidad('${idPlato}', 1)" ${estaAgotado ? 'disabled' : ''}>+</button>
                     </div>
                 `;
                 contenedor.appendChild(card);
@@ -376,7 +434,6 @@
             actualizarFooterCarrito();
         }
 
-        // Renderizar la miniatura pequeña del PDF en la tarjeta
         async function renderizarMiniaturaPdf(canvasId, numPagina) {
             if (!pdfDocGlobal) return;
             try {
@@ -394,7 +451,6 @@
             }
         }
 
-        // Abrir popup con máximo 1/3 de pantalla
         async function abrirPopupPDF(numPagina) {
             if (!pdfDocGlobal) return;
             const modal = document.getElementById('popupImagen');
@@ -420,8 +476,14 @@
         }
 
         function modificarCantidad(idPlato, cambio) {
-            const plato = menuPlatos.find(p => (p.id || p._id || p.nombre) === idPlato);
+            const plato = menuPlatos.find(p => (p.id || p._id || (p.nombre || p.title)) === idPlato);
             if (!plato) return;
+
+            const nombrePlato = plato.nombre || plato.title;
+            if (productosAgotados.includes(nombrePlato)) {
+                alert(`Lo sentimos, "${nombrePlato}" está agotado en este momento.`);
+                return;
+            }
 
             if (!carrito[idPlato]) {
                 carrito[idPlato] = { plato: plato, cantidad: 0 };
@@ -505,9 +567,11 @@
                                 localStorage.setItem(`token_mesa_${NUM_MESA}`, resData.token);
                             }
                             break;
-                        } else if (res.status === 403 || res.status === 401) {
-                            mensajeError = resData.mensaje || "La cuenta para esta mesa ya fue cerrada. Por favor, solicite una nueva sesión.";
-                            localStorage.removeItem(`token_mesa_${NUM_MESA}`);
+                        } else if (res.status === 403 || res.status === 401 || res.status === 400) {
+                            mensajeError = resData.mensaje || "Error al procesar la solicitud.";
+                            if (res.status === 403 || res.status === 401) {
+                                localStorage.removeItem(`token_mesa_${NUM_MESA}`);
+                            }
                             break;
                         }
                     } catch (e) {
